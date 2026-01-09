@@ -741,6 +741,9 @@ def submit_invoice(invoice, data):
     #     set_batch_nos(invoice_doc, "warehouse", throw=True)
     set_batch_nos_for_bundels(invoice_doc, "warehouse", throw=True)
 
+    # Bypass sales item validation for bundle items
+    bundle_items_to_restore = bypass_sales_item_validation_for_bundles(invoice_doc)
+
     invoice_doc.flags.ignore_permissions = True
     frappe.flags.ignore_account_permission = True
     invoice_doc.posa_is_printed = 1
@@ -788,6 +791,10 @@ def submit_invoice(invoice, data):
         redeeming_customer_credit(
             invoice_doc, data, is_payment_entry, total_cash, cash_account, payments
         )
+
+        # Restore original is_sales_item flag for bundle items after submit
+        if bundle_items_to_restore:
+            restore_bundle_items_flags(bundle_items_to_restore)
 
     return {"name": invoice_doc.name, "status": invoice_doc.docstatus}
 
@@ -935,25 +942,33 @@ def submit_in_background_job(kwargs):
     payments = kwargs.get("payments")
 
     invoice_doc = frappe.get_doc("Sales Invoice", invoice)
-    
+
     # Update remarks with items details for background job
     items = []
     for item in invoice_doc.items:
         if item.item_name and item.rate and item.qty:
             total = item.rate * item.qty
             items.append(f"{item.item_name} - Rate: {item.rate}, Qty: {item.qty}, Amount: {total}")
-    
+
     # Add the grand total at the end of remarks
     grand_total = f"\nGrand Total: {invoice_doc.grand_total}"
     items.append(grand_total)
-    
+
     invoice_doc.remarks = "\n".join(items)
+
+    # Bypass sales item validation for bundle items
+    bundle_items_to_restore = bypass_sales_item_validation_for_bundles(invoice_doc)
+
     invoice_doc.save()
-    
+
     invoice_doc.submit()
     redeeming_customer_credit(
         invoice_doc, data, is_payment_entry, total_cash, cash_account, payments
     )
+
+    # Restore original is_sales_item flag for bundle items
+    if bundle_items_to_restore:
+        restore_bundle_items_flags(bundle_items_to_restore)
 
 
 @frappe.whitelist()
@@ -2412,6 +2427,32 @@ def get_product_bundle(item_code, pos_profile):
         "name": bundle.name,
         "items": bundle_items_details
     }
+
+
+def bypass_sales_item_validation_for_bundles(doc):
+    """
+    Temporarily mark bundle items as sales items to bypass validation
+    Bundle component items shouldn't need to be marked as sales items
+    """
+    bundle_items = []
+    for item in doc.items:
+        if item.get("custom_bundle_id"):
+            # Check if this item is actually a sales item
+            is_sales_item = frappe.db.get_value("Item", item.item_code, "is_sales_item")
+            if not is_sales_item:
+                # Temporarily set it as sales item in the database for validation
+                bundle_items.append(item.item_code)
+                frappe.db.set_value("Item", item.item_code, "is_sales_item", 1, update_modified=False)
+
+    return bundle_items
+
+
+def restore_bundle_items_flags(bundle_items):
+    """
+    Restore original is_sales_item flag for bundle items
+    """
+    for item_code in bundle_items:
+        frappe.db.set_value("Item", item_code, "is_sales_item", 0, update_modified=False)
 
 
 def set_batch_nos_for_bundels(doc, warehouse_field, throw=False):
