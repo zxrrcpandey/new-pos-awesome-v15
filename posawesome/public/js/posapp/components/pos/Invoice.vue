@@ -305,7 +305,8 @@ export default {
       show_column_selector: false, // Column selector dialog visibility
       reference_dialog: false, // Reference details dialog visibility
       reference_no: '', // Reference number input
-      reference_name: '' // Reference name input
+      reference_name: '', // Reference name input
+      pending_invoice_doc: null // Store invoice doc while waiting for reference details
     };
   },
 
@@ -887,22 +888,9 @@ export default {
       this.$forceUpdate();
     },
 
-    show_payment() {
-      // Check if reference details are required
-      if (this.pos_profile.custom_add_reference_details) {
-        console.log('Reference details required - showing dialog');
-        this.reference_no = '';
-        this.reference_name = '';
-        this.reference_dialog = true;
-        return;
-      }
-
-      // If no reference required, proceed directly to payment
-      this.process_payment();
-    },
-
-    async process_payment() {
+    async show_payment() {
       try {
+        // Create invoice_doc first
         let invoice_doc;
         if (this.invoice_doc.doctype == "Sales Order") {
           invoice_doc = await this.process_invoice_from_order();
@@ -914,17 +902,23 @@ export default {
           return;
         }
 
-        // Add reference details to invoice if provided
-        if (this.reference_no || this.reference_name) {
-          invoice_doc.custom_reference_no = this.reference_no;
-          invoice_doc.custom_reference_name = this.reference_name;
+        // Store invoice_doc for later use
+        this.pending_invoice_doc = invoice_doc;
+
+        // Check if reference details are required
+        if (this.pos_profile.custom_add_reference_details) {
+          console.log('Reference details required - showing dialog');
+          this.reference_no = '';
+          this.reference_name = '';
+          this.reference_dialog = true;
+          return;
         }
 
-        // Show payment dialog
-        this.eventBus.emit("show_payment", "true");
-        this.eventBus.emit("send_invoice_doc_payment", invoice_doc);
+        // If no reference required, proceed directly to payment
+        this.emit_payment(invoice_doc);
+
       } catch (error) {
-        console.error('Error in process_payment:', error);
+        console.error('Error in show_payment:', error);
         this.eventBus.emit("show_message", {
           title: __("Error processing payment"),
           color: "error",
@@ -933,24 +927,40 @@ export default {
       }
     },
 
+    emit_payment(invoice_doc) {
+      // Add reference details to invoice if provided
+      if (this.reference_no || this.reference_name) {
+        invoice_doc.custom_reference_no = this.reference_no;
+        invoice_doc.custom_reference_name = this.reference_name;
+      }
+
+      // Show payment dialog
+      this.eventBus.emit("show_payment", "true");
+      this.eventBus.emit("send_invoice_doc_payment", invoice_doc);
+    },
+
     async confirm_reference_and_proceed() {
       try {
-        // Validate reference fields if required
-        if (this.pos_profile.custom_add_reference_details) {
-          if (!this.reference_no || !this.reference_name) {
-            this.eventBus.emit("show_message", {
-              title: __("Please fill in both reference number and reference name"),
-              color: "error"
-            });
-            return;
-          }
+        // Validate reference fields
+        if (!this.reference_no || !this.reference_name) {
+          this.eventBus.emit("show_message", {
+            title: __("Please fill in both reference number and reference name"),
+            color: "error"
+          });
+          return;
         }
 
         // Close the reference dialog
         this.reference_dialog = false;
 
-        // Proceed with payment processing
-        await this.process_payment();
+        // Use the stored invoice_doc
+        if (this.pending_invoice_doc) {
+          this.emit_payment(this.pending_invoice_doc);
+          this.pending_invoice_doc = null; // Clear after use
+        } else {
+          // Fallback: create new invoice_doc if not stored
+          await this.show_payment();
+        }
 
       } catch (error) {
         console.error('Error in confirm_reference_and_proceed:', error);
