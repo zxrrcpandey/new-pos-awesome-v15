@@ -2370,7 +2370,7 @@ def get_app_info() -> Dict[str, List[Dict[str, str]]]:
 def get_product_bundle(item_code, pos_profile):
     """
     Fetch product bundle details for a given item code
-    Returns bundle name and list of bundle items with quantities
+    Returns bundle name and list of bundle items with complete details
     """
     bundle_name = frappe.get_value("Product Bundle", {"new_item_code": item_code}, "name")
 
@@ -2378,18 +2378,39 @@ def get_product_bundle(item_code, pos_profile):
         return None
 
     bundle = frappe.get_doc("Product Bundle", bundle_name)
+    pos_profile_data = json.loads(pos_profile) if isinstance(pos_profile, str) else pos_profile
+
+    bundle_items_details = []
+    for item in bundle.items:
+        # Fetch complete item details from database
+        item_doc = frappe.get_cached_doc("Item", item.item_code)
+
+        # Get price from price list
+        price_list = pos_profile_data.get("selling_price_list")
+        item_price = frappe.db.get_value(
+            "Item Price",
+            {"item_code": item.item_code, "price_list": price_list},
+            "price_list_rate"
+        ) or item.rate or item_doc.standard_rate or 0
+
+        bundle_items_details.append({
+            "item_code": item.item_code,
+            "item_name": item_doc.item_name,
+            "description": item_doc.description,
+            "item_group": item_doc.item_group,
+            "image": item_doc.image,
+            "stock_uom": item_doc.stock_uom,
+            "qty": item.qty,
+            "rate": item_price,
+            "price_list_rate": item_price,
+            "uom": item.uom or item_doc.stock_uom,
+            "has_batch_no": item_doc.has_batch_no,
+            "has_serial_no": item_doc.has_serial_no,
+        })
 
     return {
         "name": bundle.name,
-        "items": [
-            {
-                "item_code": item.item_code,
-                "qty": item.qty,
-                "rate": item.rate,
-                "uom": item.uom
-            }
-            for item in bundle.items
-        ]
+        "items": bundle_items_details
     }
 
 

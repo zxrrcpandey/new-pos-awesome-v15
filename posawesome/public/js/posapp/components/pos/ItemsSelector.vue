@@ -616,15 +616,11 @@ export default {
             // Find the item details from your items list
             let item_details = this.items.find(item => item.item_code === bundle_item.item_code);
 
-            // If not found in local items list, fetch from server
-            if (!item_details) {
-              console.log(`Fetching bundle item from server: ${bundle_item.item_code}`);
-              item_details = await this.fetchBundleItemDetails(bundle_item.item_code);
-            }
+            let final_item_data;
 
             if (item_details) {
-              // Merge bundle item data with item details
-              const enhanced_bundle_item = {
+              // Item exists in local list, merge with bundle data
+              final_item_data = {
                 ...item_details,
                 ...bundle_item,
                 qty: bundle_item.qty,
@@ -632,11 +628,42 @@ export default {
                 parent_bundle: item_code,
                 custom_bundle_id: product_bundle.name
               };
-
-              // Emit event to add bundle item to cart
-              this.eventBus.emit("add_item", enhanced_bundle_item);
             } else {
-              console.warn(`Bundle item not found: ${bundle_item.item_code}`);
+              // Item not in local list, fetch stock details from server
+              console.log(`Fetching bundle item stock details from server: ${bundle_item.item_code}`);
+              const stock_details = await this.fetchBundleItemDetails(bundle_item.item_code);
+
+              if (stock_details) {
+                // Merge bundle item data with stock details
+                final_item_data = {
+                  ...bundle_item,
+                  ...stock_details,
+                  qty: bundle_item.qty,
+                  is_bundle_item: true,
+                  parent_bundle: item_code,
+                  custom_bundle_id: product_bundle.name
+                };
+              } else {
+                // Use bundle item data as-is with default stock values
+                final_item_data = {
+                  ...bundle_item,
+                  qty: bundle_item.qty,
+                  actual_qty: 0,
+                  is_bundle_item: true,
+                  parent_bundle: item_code,
+                  custom_bundle_id: product_bundle.name,
+                  item_uoms: [{uom: bundle_item.uom || bundle_item.stock_uom, conversion_factor: 1.0}],
+                  serial_no_data: [],
+                  batch_no_data: []
+                };
+              }
+            }
+
+            if (final_item_data) {
+              // Emit event to add bundle item to cart
+              this.eventBus.emit("add_item", final_item_data);
+            } else {
+              console.warn(`Bundle item not available: ${bundle_item.item_code}`);
               this.eventBus.emit("show_message", {
                 title: `Bundle item not available: ${bundle_item.item_code}`,
                 color: "warning",
