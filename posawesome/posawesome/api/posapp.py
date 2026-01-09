@@ -636,10 +636,17 @@ def update_invoice(data):
             data["conversion_rate"] = exchange_rate
             data["plc_conversion_rate"] = exchange_rate
 
+    # Bypass sales item validation for bundle items
+    bundle_items_to_restore = bypass_sales_item_validation_for_bundles(invoice_doc)
+
     invoice_doc.flags.ignore_permissions = True
     frappe.flags.ignore_account_permission = True
     invoice_doc.docstatus = 0
     invoice_doc.save()
+
+    # Restore original is_sales_item flag for bundle items
+    if bundle_items_to_restore:
+        restore_bundle_items_flags(bundle_items_to_restore)
 
     # Return both the invoice doc and the updated data
     response = invoice_doc.as_dict()
