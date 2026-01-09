@@ -601,10 +601,12 @@ export default {
 
         if (product_bundle && Array.isArray(product_bundle.items)) {
 
+          // Log the raw API response to debug
+          console.log('Product bundle API response:', product_bundle);
+
           const bundle_items = product_bundle.items.map(bundle_item => ({
-            item_code: bundle_item.item_code,
+            ...bundle_item,  // Keep ALL fields from API (item_name, rate, description, etc.)
             qty: bundle_item.qty * quantity,
-            uom: bundle_item.uom,
             custom_bundle_id: product_bundle.name,
             is_bundle_item: true,
             parent_bundle: item_code
