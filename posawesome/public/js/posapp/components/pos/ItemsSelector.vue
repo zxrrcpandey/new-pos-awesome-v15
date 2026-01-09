@@ -584,9 +584,12 @@ export default {
 
           // Add bundle items to cart
           for (const bundle_item of bundle_items) {
+
+            // Find the item details from your items list
             const item_details = this.items.find(item => item.item_code === bundle_item.item_code);
 
             if (item_details) {
+              // Merge bundle item data with item details
               const enhanced_bundle_item = {
                 ...item_details,
                 ...bundle_item,
@@ -598,6 +601,12 @@ export default {
 
               // Emit event to add bundle item to cart
               this.eventBus.emit("add_item", enhanced_bundle_item);
+            } else {
+              console.warn(`Bundle item not found in items list: ${bundle_item.item_code}`);
+              this.eventBus.emit("show_message", {
+                title: `Bundle item not found: ${bundle_item.item_code}`,
+                color: "warning",
+              });
             }
           }
 
@@ -626,7 +635,7 @@ export default {
 
       // Check if this item is a product bundle
       if (this.pos_profile.custom_product_bundle) {
-        console.log('Checking if item is a product bundle:', item.item_code);
+        console.log('Item is a product bundle:', item.item_code);
 
         const quantity = Math.abs(this.qty);
         const bundleProcessed = await this.processProductBundle(item.item_code, quantity);
