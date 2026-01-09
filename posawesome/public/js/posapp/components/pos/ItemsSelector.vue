@@ -562,6 +562,34 @@ export default {
       }
     },
 
+    async fetchBundleItemDetails(item_code) {
+      try {
+        const response = await new Promise((resolve, reject) => {
+          frappe.call({
+            method: "posawesome.posawesome.api.posapp.get_items_details",
+            args: {
+              pos_profile: this.pos_profile,
+              items_data: [{item_code: item_code}]
+            },
+            callback: function(r) {
+              resolve(r);
+            },
+            error: function(err) {
+              reject(err);
+            }
+          });
+        });
+
+        if (response.message && response.message.length > 0) {
+          return response.message[0];
+        }
+        return null;
+      } catch (error) {
+        console.error(`Error fetching bundle item details for ${item_code}:`, error);
+        return null;
+      }
+    },
+
     async processProductBundle(item_code, quantity = 1) {
 
       if (!this.pos_profile.custom_product_bundle) {
@@ -586,7 +614,13 @@ export default {
           for (const bundle_item of bundle_items) {
 
             // Find the item details from your items list
-            const item_details = this.items.find(item => item.item_code === bundle_item.item_code);
+            let item_details = this.items.find(item => item.item_code === bundle_item.item_code);
+
+            // If not found in local items list, fetch from server
+            if (!item_details) {
+              console.log(`Fetching bundle item from server: ${bundle_item.item_code}`);
+              item_details = await this.fetchBundleItemDetails(bundle_item.item_code);
+            }
 
             if (item_details) {
               // Merge bundle item data with item details
@@ -602,9 +636,9 @@ export default {
               // Emit event to add bundle item to cart
               this.eventBus.emit("add_item", enhanced_bundle_item);
             } else {
-              console.warn(`Bundle item not found in items list: ${bundle_item.item_code}`);
+              console.warn(`Bundle item not found: ${bundle_item.item_code}`);
               this.eventBus.emit("show_message", {
-                title: `Bundle item not found: ${bundle_item.item_code}`,
+                title: `Bundle item not available: ${bundle_item.item_code}`,
                 color: "warning",
               });
             }
