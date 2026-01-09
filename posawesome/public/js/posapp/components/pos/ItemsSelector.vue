@@ -634,10 +634,10 @@ export default {
               const stock_details = await this.fetchBundleItemDetails(bundle_item.item_code);
 
               if (stock_details) {
-                // Merge bundle item data with stock details
+                // Merge stock details with bundle item data (bundle_item last to preserve item_name, rate, etc)
                 final_item_data = {
-                  ...bundle_item,
                   ...stock_details,
+                  ...bundle_item,
                   qty: bundle_item.qty,
                   is_bundle_item: true,
                   parent_bundle: item_code,
