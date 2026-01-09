@@ -929,6 +929,23 @@ export default {
         invoice_doc.custom_reference_name = this.reference_name;
       }
 
+      // Update invoice_doc with current currency info
+      invoice_doc.currency = this.selected_currency || this.pos_profile.currency;
+      invoice_doc.conversion_rate = this.exchange_rate || 1;
+
+      // Update totals in invoice_doc to match current calculations
+      invoice_doc.total = this.Total;
+      invoice_doc.grand_total = this.subtotal;
+
+      // Apply rounding to get rounded total
+      invoice_doc.rounded_total = this.roundAmount(this.subtotal);
+      invoice_doc.base_total = this.Total * (1 / this.exchange_rate || 1);
+      invoice_doc.base_grand_total = this.subtotal * (1 / this.exchange_rate || 1);
+      invoice_doc.base_rounded_total = this.roundAmount(invoice_doc.base_grand_total);
+
+      // Get payments with correct sign
+      invoice_doc.payments = this.get_payments();
+
       // Show payment dialog
       this.eventBus.emit("show_payment", "true");
       this.eventBus.emit("send_invoice_doc_payment", invoice_doc);
