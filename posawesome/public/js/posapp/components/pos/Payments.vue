@@ -1292,12 +1292,18 @@ export default {
         print_format +
         "&no_letterhead=" +
         letter_head;
-      const printWindow = window.open(url, "Print");
+
+      // Open in new background tab (don't switch focus)
+      const printWindow = window.open(url, '_blank');
 
       // Check if popup was blocked
       if (!printWindow || printWindow.closed || typeof printWindow.closed == 'undefined') {
         throw new Error("Popup blocked - please allow popups for this site");
       }
+
+      // Keep focus on current POS tab
+      printWindow.blur();
+      window.focus();
 
       printWindow.addEventListener(
         "load",
