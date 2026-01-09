@@ -660,6 +660,15 @@ export default {
             }
 
             if (final_item_data) {
+              // Debug: Log the final item data being added
+              console.log(`Adding bundle item to cart:`, {
+                item_code: final_item_data.item_code,
+                item_name: final_item_data.item_name,
+                rate: final_item_data.rate,
+                qty: final_item_data.qty,
+                full_data: final_item_data
+              });
+
               // Emit event to add bundle item to cart
               this.eventBus.emit("add_item", final_item_data);
             } else {
