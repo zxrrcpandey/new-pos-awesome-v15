@@ -1184,9 +1184,20 @@ export default {
             });
             return;
           }
+          // Try to print if requested, but don't let popup blocking prevent form reset
           if (print) {
-            vm.load_print_page();
+            try {
+              vm.load_print_page();
+            } catch (error) {
+              console.error('Error loading print page:', error);
+              vm.eventBus.emit("show_message", {
+                title: __("Invoice submitted but print failed. Please allow popups and print from invoice list."),
+                color: "warning",
+              });
+            }
           }
+
+          // Always reset the form, regardless of print success
           vm.customer_credit_dict = [];
           vm.redeem_customer_credit = false;
           vm.is_cashback = true;
@@ -1282,6 +1293,12 @@ export default {
         "&no_letterhead=" +
         letter_head;
       const printWindow = window.open(url, "Print");
+
+      // Check if popup was blocked
+      if (!printWindow || printWindow.closed || typeof printWindow.closed == 'undefined') {
+        throw new Error("Popup blocked - please allow popups for this site");
+      }
+
       printWindow.addEventListener(
         "load",
         function () {
