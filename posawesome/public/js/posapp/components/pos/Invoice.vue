@@ -124,13 +124,11 @@
                     <v-col cols="12">
                       <v-text-field
                         v-model="reference_no"
-                        :label="__('Reference Number')"
+                        :label="__('Reference Number (Optional)')"
                         variant="outlined"
                         density="compact"
                         color="primary"
                         prepend-inner-icon="mdi-numeric"
-                        :rules="[v => !!v || __('Reference Number is required')]"
-                        required
                         hide-details="auto"
                         autocomplete="off"
                       ></v-text-field>
@@ -139,13 +137,11 @@
                     <v-col cols="12">
                       <v-text-field
                         v-model="reference_name"
-                        :label="__('Reference Name')"
+                        :label="__('Reference Name (Optional)')"
                         variant="outlined"
                         density="compact"
                         color="primary"
                         prepend-inner-icon="mdi-account"
-                        :rules="[v => !!v || __('Reference Name is required')]"
-                        required
                         hide-details="auto"
                         autocomplete="off"
                       ></v-text-field>
@@ -172,7 +168,6 @@
                   variant="elevated"
                   @click="confirm_reference_and_proceed"
                   prepend-icon="mdi-credit-card"
-                  :disabled="!reference_no || !reference_name"
                   class="ml-3"
                 >
                   {{ __("Proceed to Payment") }}
@@ -941,15 +936,6 @@ export default {
 
     async confirm_reference_and_proceed() {
       try {
-        // Validate reference fields
-        if (!this.reference_no || !this.reference_name) {
-          this.eventBus.emit("show_message", {
-            title: __("Please fill in both reference number and reference name"),
-            color: "error"
-          });
-          return;
-        }
-
         // Close the reference dialog
         this.reference_dialog = false;
 
