@@ -267,6 +267,7 @@ fixtures = [
                     "POS Profile-custom_add_reference_details",
                     "Sales Invoice-custom_reference_no",
                     "Sales Invoice-custom_reference_name",
+                    "Product Bundle Item-custom_product_bundle_stock",
                 ),
             ]
         ],

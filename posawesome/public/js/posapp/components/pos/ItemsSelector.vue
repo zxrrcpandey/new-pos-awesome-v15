@@ -604,13 +604,24 @@ export default {
           // Log the raw API response to debug
           console.log('Product bundle API response:', product_bundle);
 
-          const bundle_items = product_bundle.items.map(bundle_item => ({
+          // Filter out "Not Available" items before processing
+          const available_items = product_bundle.items.filter(bundle_item => {
+            const stock_status = bundle_item.stock_status || 'Available';
+            return stock_status !== 'Not Available';
+          });
+
+          const bundle_items = available_items.map(bundle_item => ({
             ...bundle_item,  // Keep ALL fields from API (item_name, rate, description, etc.)
             qty: bundle_item.qty * quantity,
             custom_bundle_id: product_bundle.name,
             is_bundle_item: true,
             parent_bundle: item_code
           }));
+
+          // Log filtered items
+          if (product_bundle.items.length !== available_items.length) {
+            console.log(`Filtered out ${product_bundle.items.length - available_items.length} unavailable items from bundle`);
+          }
 
           // Add bundle items to cart
           for (const bundle_item of bundle_items) {

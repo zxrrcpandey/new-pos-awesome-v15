@@ -2428,6 +2428,7 @@ def get_product_bundle(item_code, pos_profile):
             "uom": item.uom or item_doc.stock_uom,
             "has_batch_no": item_doc.has_batch_no,
             "has_serial_no": item_doc.has_serial_no,
+            "stock_status": item.get("custom_product_bundle_stock") or "Available",
         })
 
     return {
